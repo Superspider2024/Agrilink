@@ -2,9 +2,9 @@ const express = require('express');
 const app = express();
 const cors = require('cors');
 require('dotenv').config();
-const auth = require('../backend/routes/auth.js')
-const product = require('../backend/routes/product.js')
-const connect = require('../backend/config/db.js')
+const auth = require('../routes/auth.js')
+const product = require('../routes/product.js')
+const connect = require('../config/db.js')
 
 
 connect()
