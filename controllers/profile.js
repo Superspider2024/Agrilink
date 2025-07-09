@@ -49,7 +49,7 @@ const updateProfile= async(req,res)=>{
         const newUser= await User.findByIdAndUpdate(user._id,{
             name,
             location
-        })
+        },{new:true,runValidators:true,}).select('-password')
         if(!newUser){
             throw new Error("User not updated")
         }
