@@ -62,5 +62,18 @@ const updateProfile= async(req,res)=>{
     }
 }
 
+const users= async(req,res)=>{
+    try{
+        const users = await User.find();
+        if(!users){
+            throw new Error("Issue with server or database")
+        }
 
-module.exports={getMe,profile,updateProfile}  
+        res.status(200).json(users)
+    }catch(e){
+        res.status(500).json(e.message)
+    }
+}
+
+
+module.exports={getMe,profile,updateProfile,users}  

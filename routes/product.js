@@ -5,7 +5,7 @@ const router = express.Router()
 const {createproduct,products,product,updateproduct,deleteproduct}= require('../controllers/product.js')
 const protect = require('../middleware/protect.js')
 const {declineOffer,acceptOffer,createOffer,orders,order,updateOrder,deleteOrder}= require('../controllers/order.js')
-const {getMe,profile,updateProfile}= require('../controllers/profile.js')
+const {getMe,profile,updateProfile,users}= require('../controllers/profile.js')
 
 
 
@@ -34,6 +34,7 @@ router.put('/declineoffer/:id',protect,declineOffer)
 router.get('/getMe',protect,getMe)
 router.get('/profile/:id',protect,profile)
 router.put('/updateprofile',protect,updateProfile)
+router.get('/users',users)
 
 
 
