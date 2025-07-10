@@ -9,7 +9,10 @@ const orderSchema = new mongoose.Schema({
     price:{type:Number,required:true},
     quantity:{type:Number,required:true},
     status:{type:String,required:true,enum:["pending","accepted","rejected","delivered"],default:"pending"},
-    dateJoined:{type:Date,default:Date.now()}
+    transport:{type:String},
+    transporting:{type:Boolean,default:false},
+    dateJoined:{type:Date,default:Date.now()},
+
 })
 
 const Orders = mongoose.model("Orders", orderSchema)

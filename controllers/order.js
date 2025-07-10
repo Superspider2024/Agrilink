@@ -128,5 +128,35 @@ const declineOffer= async(req,res)=>{
     }
 }
 
+const offers= async(req,res)=>{
+    try{
+        const orders = await Orders.find({farmer:req.user._id})
+        if(!orders){
+            throw new Error("Orders not found")
+        }
+        res.status(200).json(orders)
+    }catch(e){
+        res.status(500).json(e.message)
+    }
+}
 
-module.exports={declineOffer,acceptOffer,createOffer,orders,order,updateOrder,deleteOrder}
+const transport = async(req,res)=>{
+    try{
+        const {transport,id} = req.body;
+        if(!transport || !id){
+            throw new Error("Lack of enough input")
+        }
+        const order= await new Orders.findByIdAndUpdate(id,{
+            transport,
+            transporting:true
+        },{new:true})
+
+        await order.save()
+        res.status(201).json(order)
+    }catch(e){
+        res.status(500).json(500)
+    }
+}
+
+
+module.exports={declineOffer,transport,acceptOffer,createOffer,orders,order,updateOrder,deleteOrder,offers}

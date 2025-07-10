@@ -4,7 +4,7 @@ const express = require('express')
 const router = express.Router()
 const {createproduct,products,product,updateproduct,deleteproduct}= require('../controllers/product.js')
 const protect = require('../middleware/protect.js')
-const {declineOffer,acceptOffer,createOffer,orders,order,updateOrder,deleteOrder}= require('../controllers/order.js')
+const {declineOffer,acceptOffer,createOffer,orders,order,updateOrder,deleteOrder,transport,offers}= require('../controllers/order.js')
 const {getMe,profile,updateProfile,users}= require('../controllers/profile.js')
 
 
@@ -28,6 +28,8 @@ router.put('/updateorder/:id',protect,updateOrder)
 router.delete('/deleteorder/:id',protect,deleteOrder)
 router.put('/acceptoffer/:id',protect,acceptOffer)
 router.put('/declineoffer/:id',protect,declineOffer)
+router.get('/offers',protect,offers)
+router.post("/transport",protect,transport)
 
 //profile stuff
 
