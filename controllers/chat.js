@@ -5,27 +5,41 @@ const User= require("../models/user.js")
 
 
 
-const addChat=async(req,res)=>{
-    try{
-        const {id}= req.body;
+const addChat = async (req, res) => {
+    try {
+        const { id: recipientId } = req.body; // The ID of the person to chat with
+        const senderId = req.user._id; // The ID of the logged-in user
 
-        if(id===req.user._id){
-            return res.status(400).json("Unfortunately, chatting to yourself will make a blackhole")
+        if (!recipientId) {
+            return res.status(400).json({ message: "Recipient ID is required." });
         }
 
-        if(!id){
-            return res.status(400).json('Provide data!')
+        // Prevent a user from chatting with themselves
+        if (senderId.toString() === recipientId) {
+            return res.status(400).json({ message: "You cannot start a chat with yourself." });
         }
-        const found = await User.findOneAndUpdate({_id:id},{$addToSet:{chats:req.user._id}},{new:true})
-        const found1 = await User.findOneAndUpdate({_id:req.user.id},{$addToSet:{chats:id}},{new:true})
+
+        // Use Promise.all to update both users at the same time.
+        // $addToSet is smart: it only adds the ID if it's not already there.
+        const [updatedSender, updatedRecipient] = await Promise.all([
+            User.findByIdAndUpdate(senderId, { $addToSet: { chats: recipientId } }, { new: true }),
+            User.findByIdAndUpdate(recipientId, { $addToSet: { chats: senderId } }, { new: true })
+        ]);
+
+        if (!updatedSender || !updatedRecipient) {
+            throw new Error("Failed to update chat lists for one or both users.");
+        }
+
+        // Return the updated chat list of the person who started the chat.
         res.status(201).json({
-            chatList:found1.chats
-        })
-        
-    }catch(e){
-        res.status(400).json("Issue with starting the chat: "+ e.message)
+            message: "Chat started successfully.",
+            chatList: updatedSender.chats
+        });
+
+    } catch (e) {
+        res.status(500).json({ message: "Issue starting chat: " + e.message });
     }
-}
+};
 
 const deleteChat=async(req,res)=>{
     try{
@@ -45,20 +59,19 @@ const deleteChat=async(req,res)=>{
     }
 }
 
-const chatList=async(req,res)=>{
-    try{
-        const user = await User.findOne({_id:req.user.id})
-        if(!user){
-            return res.status(400).json("Issues finding the needed user!")
+const chatList = async (req, res) => {
+    try {
+        // The `protect` middleware already gives us `req.user`, so we don't need to find it again.
+        if (!req.user || !req.user.chats) {
+            return res.status(404).json({ message: "Could not find user's chat list." });
         }
-
         res.status(200).json({
-            chatList:user.chats
-        })
-    }catch(e){
-        res.status(400).json("Issues getting the chatlist")
+            chatList: req.user.chats
+        });
+    } catch (e) {
+        res.status(500).json({ message: "Issue getting the chat list: " + e.message });
     }
-}
+};
 
 const findChats=async(req,res)=>{
     try{
