@@ -146,9 +146,10 @@ const transport = async(req,res)=>{
         if(!transport || !id){
             throw new Error("Lack of enough input")
         }
-        const order= await new Orders.findByIdAndUpdate(id,{
+        const order= await Orders.findByIdAndUpdate(id,{
             transport,
-            transporting:true
+            transporting:true,
+            status:"paid"
         },{new:true})
 
         await order.save()
