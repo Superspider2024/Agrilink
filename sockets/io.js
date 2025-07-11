@@ -1,31 +1,28 @@
 const Messages = require("../models/messages.js");
 const Chats = require("../models/chats.js");
 
-const socketHandler = (socket, io) => {
-  // The outer try/catch is okay, but we need one inside the event listener.
-  try {
+const socketHandler = (io) => {
+  io.on('connection', (socket) => {
+    console.log('✅ A user connected');
+
     socket.on('joinChat', (chatId) => {
       socket.join(chatId);
-      console.log(`User joined chat ${chatId}`);
+      console.log(`✅ User joined chat ${chatId}`);
     });
 
     socket.on('sendMessage', async (data) => {
-      // --- FIX #1: Added a try...catch block HERE to see the real error ---
       try {
         const { chatId, sender, receiver, content, imageTrue } = data;
 
-        // --- FIX #2: Removed the 'receiver' field which doesn't exist in your Message model ---
         const newMessage = new Messages({
           sender,
           content,
           imageTrue,
           chatId,
-          // 'created' is handled by default: Date.now() in your model, so this is optional
         });
 
-        await newMessage.save(); // This should now work correctly.
+        await newMessage.save();
 
-        // The rest of your logic for updating the chat list is great.
         const updatedChat = await Chats.findOneAndUpdate(
           { chatId },
           {
@@ -48,7 +45,8 @@ const socketHandler = (socket, io) => {
           await Chats.create(chatData);
         }
 
-        // Your broadcast logic is perfect.
+        console.log(`📢 Emitting message to room: ${chatId}`);
+
         io.to(chatId).emit('newMessage', {
           chatId,
           sender,
@@ -58,29 +56,23 @@ const socketHandler = (socket, io) => {
         });
 
       } catch (e) {
-        // This will now log the specific error if .save() fails.
-        console.error("!!! FAILED TO SEND/SAVE MESSAGE:", e.message);
+        console.error("❌ FAILED TO SEND/SAVE MESSAGE:", e.message);
       }
     });
 
     socket.on("messagesReadByReceiver", async (data) => {
-      // This logic is fine.
-      const chatId = data.chatId;
-      const sender = data.sender.toLowerCase();
+      const { chatId, sender } = data;
       await Messages.updateMany(
-        { chatId, sender, isRead: false },
+        { chatId, sender: sender.toLowerCase(), isRead: false },
         { $set: { isRead: true } }
       );
       socket.to(chatId).emit("MessagesReadToSender", { sender });
     });
 
     socket.on('disconnect', () => {
-      console.log('User disconnected');
+      console.log('❎ User disconnected');
     });
-
-  } catch (e) {
-    console.error("SOCKET HANDLER ERROR:", e.message);
-  }
+  });
 };
 
 module.exports = socketHandler;
