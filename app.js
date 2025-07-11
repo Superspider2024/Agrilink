@@ -30,9 +30,7 @@ app.use('/', (req,res)=>{
     res.send('Welcome to Agrilink Backend');
 })
 
-io.on("connection", (socket) => {
-  socketHandler(socket, io);
-});
+socketHandler(io);
 
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
