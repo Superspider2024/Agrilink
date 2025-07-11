@@ -155,7 +155,7 @@ const transport = async(req,res)=>{
         await order.save()
         res.status(201).json(order)
     }catch(e){
-        res.status(500).json(500)
+        res.status(500).json(e.message)
     }
 }
 
