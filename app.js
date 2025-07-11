@@ -5,7 +5,19 @@ require('dotenv').config();
 const auth = require('./routes/auth.js')
 const product = require('./routes/product.js')
 const connect = require('./config/db.js')
+const { Server } = require('socket.io')
+const socketHandler = require('./sockets/io.js')
+const http = require('http')
 
+const server = http.createServer(app); 
+
+
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
 connect()
 app.use(express.json());
@@ -18,8 +30,12 @@ app.use('/', (req,res)=>{
     res.send('Welcome to Agrilink Backend');
 })
 
-app.listen(PORT,()=>{
-    console.log(`Server is running on port ${PORT}...`);
-})
+io.on("connection", (socket) => {
+  socketHandler(socket, io);
+});
+
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
 //http://localhost:3000
