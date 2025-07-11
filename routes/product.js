@@ -6,7 +6,7 @@ const {createproduct,products,product,updateproduct,deleteproduct}= require('../
 const protect = require('../middleware/protect.js')
 const {declineOffer,acceptOffer,createOffer,orders,order,updateOrder,deleteOrder,transport,offers}= require('../controllers/order.js')
 const {getMe,profile,updateProfile,users}= require('../controllers/profile.js')
-const { chatList,addChat,deleteChat } = require('../controllers/chat.js')
+const { chatList,addChat,deleteChat,findLastMessage,findChats } = require('../controllers/chat.js')
 
 
 
@@ -45,6 +45,8 @@ router.get('/users',users)
 router.post('/addchat',protect,addChat)
 router.post('/deletechat',protect,deleteChat)
 router.get('/chatList',protect,chatList)
+router.post('/findchats',protect,findChats)
+router.post('/findlastmessage',protect,findLastMessage)
 
 
 
