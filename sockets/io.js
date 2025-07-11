@@ -1,89 +1,54 @@
 const Messages = require("../models/messages.js");
 const Chats = require("../models/chats.js");
 
-const socketHandler = async (socket, io) => {
-  try {
+const socketHandler = (io) => { 
+  io.on('connection', (socket) => {
+    console.log(`A user connected: ${socket.id}`);
+
     socket.on('joinChat', (chatId) => {
       socket.join(chatId);
-      console.log(`User joined chat ${chatId}`);
+      console.log(`User ${socket.id} joined chat room: ${chatId}`);
     });
 
     socket.on('sendMessage', async (data) => {
-      const { chatId, sender, receiver, content, imageTrue } = data;
+      // --- FIX: Added a try...catch block INSIDE the event handler ---
+      try {
+        // We expect the frontend to send IDs for sender and receiver
+        const { chatId, senderId, receiverId, content } = data;
 
+        if (!chatId || !senderId || !receiverId || !content) {
+          throw new Error("Missing data for sending message.");
+        }
 
-      const newMessage = new Messages({
-        sender,
-        receiver,
-        content,
-        imageTrue,
-        chatId,
-        created: Date.now(),
-      });
+        // 1. Create and save the new message document
+        const newMessage = new Messages({
+          chatId: chatId,
+          sender: senderId,
+          content: content,
+        });
+        await newMessage.save();
 
-      await newMessage.save();
-
-
-      const updatedChat = await Chats.findOneAndUpdate(
-        { chatId },
-        {
-          $set: { lastUpdated: Date.now(), latestMessage: content },
-          ...(imageTrue && { $push: { images: content } }),
-        },
-        { new: true }
-      );
-
-      if (!updatedChat) {
-        const chatData = {
-          chatId,
-          participants: [sender, receiver],
+        // 2. Update the parent chat document with the latest message
+        await Chats.findByIdAndUpdate(chatId, {
           latestMessage: content,
-          lastUpdated: Date.now(),
-        };
+        });
 
-        if (imageTrue) {
-          chatData.images = [content];
-        }
+        // 3. Populate the sender's details to send back to the frontend
+        const populatedMessage = await newMessage.populate('sender', 'name role');
 
-        const newChat = await Chats.create(chatData);
+        // 4. Broadcast the new message to everyone in the private chat room
+        io.to(chatId).emit('newMessage', populatedMessage);
 
-        if (!newChat) {
-          throw new Error("Error in creation of chat");
-        }
+      } catch (e) {
+        // Now, if an error occurs, we will see it clearly in the backend console.
+        console.error("!!! SOCKET ERROR on sendMessage:", e.message);
       }
-
-      io.to(chatId).emit('newMessage', {
-        chatId,
-        sender,
-        content,
-        imageTrue,
-        created: newMessage.created,
-      });
     });
-
-    socket.on("messagesReadByReceiver",async(data)=>{
-        const chatId=data.chatId
-        const sender=data.sender.toLowerCase()
-
-        await Messages.updateMany(
-          { chatId, sender, isRead: false },
-          { $set: { isRead: true } }
-        );
-
-
-        socket.to(chatId).emit("MessagesReadToSender",{
-          sender,
-        })
-
-
-    })
 
     socket.on('disconnect', () => {
-      console.log('User disconnected');
+      console.log(`User disconnected: ${socket.id}`);
     });
-  } catch (e) {
-    console.error("ERROR:", e.message);
-  }
+  });
 };
 
 module.exports = socketHandler;
