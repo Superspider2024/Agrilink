@@ -8,7 +8,7 @@ const orderSchema = new mongoose.Schema({
     farmer:{type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     price:{type:Number,required:true},
     quantity:{type:Number,required:true},
-    status:{type:String,required:true,enum:["pending","accepted","rejected","delivered"],default:"pending"},
+    status:{type:String,required:true,enum:["pending","accepted","rejected","delivered","paid"],default:"pending"},
     transport:{type:String},
     transporting:{type:Boolean,default:false},
     dateJoined:{type:Date,default:Date.now()},
