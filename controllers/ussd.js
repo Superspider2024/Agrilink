@@ -47,7 +47,7 @@ exports.ussdHandler = async (req, res) => {
                 const [_, name, location, roleChoice, pin] = textParts;
                 const role = roleChoice === '1' ? 'farmer' : 'buyer';
                 
-                const existingUser = await User.findOne({ email: `${phoneNumber}@agrilink.ussd` });
+                const existingUser = await User.findOne({ email: `${phoneNumber}@1agrilink.ussd` });
                 if (existingUser) {
                     response = `END A user with this phone number already exists. Please try logging in.`;
                 } else {
