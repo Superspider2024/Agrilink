@@ -125,7 +125,7 @@ exports.ussdHandler = async (req, res) => {
         }
     } catch (err) {
         console.error("USSD Error:", err);
-        response = `END An error occurred. Please try again.`;
+        response = `END An error occurred. Please try again.${err.message}`;
     }
     
     res.set('Content-Type', 'text/plain');
