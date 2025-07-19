@@ -1,23 +1,18 @@
-/*
-================================================================================
-  FILE 1: controllers/ussdController.js (The Final, Professional Version)
-  PURPOSE: A complete, multi-level USSD menu system that handles adding,
-           viewing, editing, and deleting products, with full "Back"
-           functionality and a persistent session.
-================================================================================
-*/
+
 const User = require('../models/user');
 const Product = require('../models/product');
 const Order = require('../models/order');
 
-// In-memory session store. Simple and fast for a hackathon.
+// In-memory session store for any temporary data if needed, though the main flow is stateless.
 const sessions = {};
 
 // --- HELPER FUNCTIONS for clean menus ---
 const getMainMenu = () => `CON Welcome to AgriLink!\n1. Register\n2. Login`;
 const getFarmerMenu = (name) => `CON Welcome, ${name}!\n1. Add Produce\n2. Manage My Products\n3. View Offers`;
+const getBuyerMenu = (name) => `CON Welcome, ${name}!\n1. Browse Products\n2. View My Orders`;
 
-// --- FIX: This function is now included and exported correctly ---
+// --- FIX: Added the endUssdSession controller back in ---
+// This function is called by the frontend simulator to clear the session memory.
 exports.endUssdSession = (req, res) => {
     const { phoneNumber } = req.body;
     if (sessions[phoneNumber]) {
@@ -29,192 +24,110 @@ exports.endUssdSession = (req, res) => {
     }
 };
 
-
-
 exports.ussdHandler = async (req, res) => {
     const { phoneNumber, text } = req.body;
     let response = '';
-    let session = sessions[phoneNumber] || { level: 'main' };
-
     const textParts = text.split('*');
-    const userInput = textParts[textParts.length - 1];
 
     try {
-        // --- Robust "Back" functionality ---
-        if (userInput === '0') {
-            if (session.level.startsWith('farmer_')) {
-                session.level = 'farmer_menu';
-                response = getFarmerMenu(session.user.name);
-            } else if (session.level.startsWith('buyer_')) {
-                session.level = 'buyer_menu';
-                response = getBuyerMenu(session.user.name);
-            } else {
-                session.level = 'main';
-                response = getMainMenu();
+        if (text === '') {
+            // Clear any old session when a new dialogue starts
+            if (sessions[phoneNumber]) {
+                delete sessions[phoneNumber];
             }
-        } else {
-            switch (session.level) {
-                case 'main':
-                    if (userInput === '1') {
-                        session.level = 'register_name';
-                        response = `CON Enter your full name:`;
-                    } else if (userInput === '2') {
-                        session.level = 'login_pin';
-                        const user = await User.findOne({ email: `${phoneNumber}@agrilink.ussd` });
-                        if (!user) {
-                            response = `END You are not registered. Please register first.`;
-                            delete sessions[phoneNumber];
-                        } else {
-                            session.user = user;
-                            response = `CON Welcome, ${user.name}. Enter your PIN:`;
-                        }
-                    } else {
-                        response = getMainMenu();
-                    }
-                    break;
-
-                // --- REGISTRATION STATES ---
-                case 'register_name':
-                    session.name = userInput;
-                    session.level = 'register_location';
-                    response = `CON Enter your location:`;
-                    break;
-                case 'register_location':
-                    session.location = userInput;
-                    session.level = 'register_role';
-                    response = `CON Choose your role:\n1. Farmer\n2. Buyer`;
-                    break;
-                case 'register_role':
-                    session.role = userInput === '1' ? 'farmer' : 'buyer';
-                    session.level = 'register_pin';
-                    response = `CON Set your 4-digit PIN:`;
-                    break;
-                case 'register_pin':
-                    const { name, location, role } = session;
-                    await new User({ name, email: `${phoneNumber}@agrilink.ussd`, password: userInput, location, role }).save();
+            response = getMainMenu();
+        } 
+        // --- REGISTRATION FLOW (STATELESS) ---
+        else if (textParts[0] === '1') {
+            if (textParts.length === 1) response = `CON Enter your full name:`;
+            else if (textParts.length === 2) response = `CON Enter your location (e.g., Nairobi):`;
+            else if (textParts.length === 3) response = `CON Choose your role:\n1. Farmer\n2. Buyer`;
+            else if (textParts.length === 4) response = `CON Set your 4-digit PIN:`;
+            else if (textParts.length === 5) {
+                const [_, name, location, roleChoice, pin] = textParts;
+                const role = roleChoice === '1' ? 'farmer' : 'buyer';
+                
+                const existingUser = await User.findOne({ email: `${phoneNumber}@agrilink.ussd` });
+                if (existingUser) {
+                    response = `END A user with this phone number already exists. Please try logging in.`;
+                } else {
+                    await new User({ name, email: `${phoneNumber}@agrilink.ussd`, password: pin, location, role }).save();
                     response = `END Registration successful! Dial *384# again to log in.`;
-                    delete sessions[phoneNumber];
-                    break;
-
-                // --- LOGIN STATE ---
-                case 'login_pin':
-                    if (userInput !== session.user.password) { // Use bcrypt in production
-                        response = `END Incorrect PIN.`;
-                        delete sessions[phoneNumber];
-                    } else {
-                        if (session.user.role === 'farmer') {
-                            session.level = 'farmer_menu';
-                            response = getFarmerMenu(session.user.name);
-                        } else {
-                            // --- FIX: Set the session level and show the buyer menu ---
-                            session.level = 'buyer_menu';
-                            response = getBuyerMenu(session.user.name);
+                }
+            }
+        }
+        // --- LOGIN & MAIN MENU FLOW ---
+        else if (textParts[0] === '2') {
+            const user = await User.findOne({ email: `${phoneNumber}@agrilink.ussd` });
+            if (!user) {
+                response = `END You are not registered. Please register first.`;
+            } else if (textParts.length === 1) {
+                response = `CON Welcome, ${user.name}. Enter your PIN:`;
+            } else if (textParts.length === 2) {
+                const pin = textParts[1];
+                if (pin !== user.password) { // Use bcrypt in production
+                    response = `END Incorrect PIN.`;
+                } else {
+                    if (user.role === 'farmer') response = getFarmerMenu(user.name);
+                    else response = getBuyerMenu(user.name);
+                }
+            }
+            // --- LOGGED-IN ACTIONS ---
+            else if (textParts.length > 2) {
+                const user = await User.findOne({ email: `${phoneNumber}@agrilink.ussd` }); // Re-fetch user to be safe
+                const userChoice = textParts[2];
+                // --- FARMER ACTIONS ---
+                if (user.role === 'farmer') {
+                    if (userChoice === '1') { // Add Produce
+                        if (textParts.length === 3) response = `CON Enter produce name:`;
+                        else if (textParts.length === 4) response = `CON Enter quantity (e.g., 50 kg):`;
+                        else if (textParts.length === 5) response = `CON Enter price per unit (e.g., 120):`;
+                        else if (textParts.length === 6) {
+                            const [,,, name, quantity, price] = textParts;
+                            await new Product({ name, quantity, price, location: user.location, farmer: user._id, description: 'Listed via USSD' }).save();
+                            response = `END Product listed successfully!`;
                         }
-                    }
-                    break;
-
-                // --- FARMER MENU STATES ---
-                case 'farmer_menu':
-                    if (userInput === '1') { // Add Produce
-                        session.level = 'farmer_add_name';
-                        response = `CON Enter produce name:`;
-                    } else if (userInput === '2') { // Manage Products
-                        const myProducts = await Product.find({ farmer: session.user._id });
-                        if (myProducts.length === 0) {
-                            response = `CON You have no products listed.\n\n${getFarmerMenu(session.user.name)}`;
-                        } else {
-                            session.myProducts = myProducts;
-                            let productList = myProducts.map((p, i) => `${i + 1}. ${p.name}`).join('\n');
-                            session.level = 'farmer_manage_product_select';
-                            response = `CON Select a product to manage:\n${productList}\n0. Back`;
+                    } else if (userChoice === '2') { // Manage My Products
+                        const myProducts = await Product.find({ farmer: user._id });
+                        if (myProducts.length === 0) response = `END You have no products listed.`;
+                        else {
+                            let productList = myProducts.map((p, i) => `${i + 1}. ${p.name} - ${p.quantity}`).join('\n');
+                            response = `END Your Products:\n${productList}`;
                         }
-                    } else if (userInput === '3') { // View Offers
-                        const myOffers = await Order.find({ farmer: session.user._id, status: 'pending' }).populate('product', 'name');
-                         if (myOffers.length === 0) {
-                            response = `CON You have no pending offers.\n\n${getFarmerMenu(session.user.name)}`;
-                        } else {
+                    } else if (userChoice === '3') { // View Offers
+                        const myOffers = await Order.find({ farmer: user._id, status: 'pending' }).populate('product', 'name');
+                        if (myOffers.length === 0) response = `END You have no pending offers.`;
+                        else {
                             let offerList = myOffers.map((o, i) => `${i + 1}. Offer for ${o.product.name}`).join('\n');
                             response = `END Pending Offers:\n${offerList}`;
                         }
                     }
-                    break;
-                
-                // --- Add Produce Flow ---
-                case 'farmer_add_name':
-                    session.productName = userInput;
-                    session.level = 'farmer_add_quantity';
-                    response = `CON Enter quantity (e.g., 50 kg):`;
-                    break;
-                case 'farmer_add_quantity':
-                    session.productQuantity = userInput;
-                    session.level = 'farmer_add_price';
-                    response = `CON Enter price per unit (e.g., 120):`;
-                    break;
-                case 'farmer_add_price':
-                    await new Product({ name: session.productName, quantity: session.productQuantity, price: userInput, location: session.user.location, farmer: session.user._id, description: 'Listed via USSD' }).save();
-                    session.level = 'farmer_menu';
-                    response = `CON Product listed successfully!\n\n${getFarmerMenu(session.user.name)}`;
-                    break;
-
-                // --- Manage Product Flow ---
-                case 'farmer_manage_product_select':
-                    const productIndex = parseInt(userInput) - 1;
-                    const selectedProduct = session.myProducts[productIndex];
-                    if (!selectedProduct) {
-                        response = `CON Invalid selection.\n\n${getFarmerMenu(session.user.name)}`;
-                        session.level = 'farmer_menu';
-                    } else {
-                        session.selectedProductId = selectedProduct._id;
-                        session.level = 'farmer_manage_product_action';
-                        response = `CON Manage ${selectedProduct.name}:\n1. Edit Price\n2. Delete Product\n0. Back`;
-                    }
-                    break;
-                case 'farmer_manage_product_action':
-                    if (userInput === '1') { // Edit Price
-                        session.level = 'farmer_edit_price';
-                        response = `CON Enter new price:`;
-                    } else if (userInput === '2') { // Delete Product
-                        await Product.findByIdAndDelete(session.selectedProductId);
-                        session.level = 'farmer_menu';
-                        response = `CON Product deleted successfully.\n\n${getFarmerMenu(session.user.name)}`;
-                    }
-                    break;
-                case 'farmer_edit_price':
-                    await Product.findByIdAndUpdate(session.selectedProductId, { price: userInput });
-                    session.level = 'farmer_menu';
-                    response = `CON Price updated successfully.\n\n${getFarmerMenu(session.user.name)}`;
-                    break;
-                
-                // --- BUYER MENU STATES ---
-                case 'buyer_menu':
-                    if (userInput === '1') { // Browse Marketplace
+                }
+                // --- BUYER ACTIONS ---
+                else if (user.role === 'buyer') {
+                    if (userChoice === '1') { // Browse Products
                         const allProducts = await Product.find().populate('farmer', 'name');
-                        if (allProducts.length === 0) {
-                            response = `CON The marketplace is currently empty.\n\n${getBuyerMenu(session.user.name)}`;
-                        } else {
+                        if (allProducts.length === 0) response = `END The marketplace is currently empty.`;
+                        else {
                             let productList = allProducts.map((p, i) => `${i + 1}. ${p.name} from ${p.farmer.name}`).join('\n');
                             response = `END Available Products:\n${productList}`;
                         }
-                    } else if (userInput === '2') { // View My Orders
-                        const myOrders = await Order.find({ buyer: session.user._id, status: 'pending' }).populate('product', 'name');
-                        if (myOrders.length === 0) {
-                            response = `CON You have no pending orders.\n\n${getBuyerMenu(session.user.name)}`;
-                        } else {
-                            let orderList = myOrders.map((o, i) => `${i + 1}. Offer for ${o.product.name}`).join('\n');
-                            response = `END Your Pending Orders:\n${orderList}`;
+                    } else if (userChoice === '2') { // View My Orders
+                        const myOrders = await Order.find({ buyer: user._id }).populate('product', 'name');
+                        if (myOrders.length === 0) response = `END You have no orders.`;
+                        else {
+                            let orderList = myOrders.map((o, i) => `${i + 1}. ${o.product.name} (${o.status})`).join('\n');
+                            response = `END Your Orders:\n${orderList}`;
                         }
                     }
-                    break;
+                }
             }
         }
     } catch (err) {
         console.error("USSD Error:", err);
         response = `END An error occurred. Please try again.`;
     }
-
-    sessions[phoneNumber] = session;
+    
     res.set('Content-Type', 'text/plain');
     res.send(response);
 };
-
-
