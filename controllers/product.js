@@ -1,5 +1,5 @@
 const Products = require("../models/product.js")
-
+const Orders = require("../models/order.js")
 
 
 const createproduct= async(req,res)=>{
