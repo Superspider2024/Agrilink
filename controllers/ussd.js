@@ -1,4 +1,11 @@
-
+/*
+================================================================================
+  FILE 1: controllers/ussdController.js (The Final, Professional Version)
+  PURPOSE: A complete, multi-level USSD menu system that handles adding,
+           viewing, editing, and deleting products, with full "Back"
+           functionality and a persistent session.
+================================================================================
+*/
 const User = require('../models/user');
 const Product = require('../models/product');
 const Order = require('../models/order');
@@ -10,6 +17,7 @@ const sessions = {};
 const getMainMenu = () => `CON Welcome to AgriLink!\n1. Register\n2. Login`;
 const getFarmerMenu = (name) => `CON Welcome, ${name}!\n1. Add Produce\n2. Manage My Products\n3. View Offers`;
 
+// --- FIX: This function is now included and exported correctly ---
 exports.endUssdSession = (req, res) => {
     const { phoneNumber } = req.body;
     if (sessions[phoneNumber]) {
@@ -24,7 +32,9 @@ exports.endUssdSession = (req, res) => {
 exports.ussdHandler = async (req, res) => {
     const { phoneNumber, text } = req.body;
     let response = '';
-    let session = sessions[phoneNumber] || {};
+    
+    // Use a simple session based on phone number, default level is 'main'
+    let session = sessions[phoneNumber] || { level: 'main' };
 
     const textParts = text.split('*');
     const userInput = textParts[textParts.length - 1];
@@ -32,16 +42,15 @@ exports.ussdHandler = async (req, res) => {
     try {
         // --- FIX: Robust "Back" functionality ---
         if (userInput === '0') {
-            // This logic allows going back from any sub-menu to the main farmer menu
             if (session.level.startsWith('farmer_')) {
                 session.level = 'farmer_menu';
                 response = getFarmerMenu(session.user.name);
             } else {
-                // Default back action if needed, for now it resets
                 session.level = 'main';
                 response = getMainMenu();
             }
         } else {
+            // --- This is a State Machine. It checks the session level to decide what to do. ---
             switch (session.level) {
                 case 'main':
                     if (userInput === '1') {
@@ -87,7 +96,7 @@ exports.ussdHandler = async (req, res) => {
 
                 // --- LOGIN STATE ---
                 case 'login_pin':
-                    if (userInput !== session.user.password) {
+                    if (userInput !== session.user.password) { // Use bcrypt in production
                         response = `END Incorrect PIN.`;
                         delete sessions[phoneNumber];
                     } else {
