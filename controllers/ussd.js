@@ -10,10 +10,21 @@ const sessions = {};
 const getMainMenu = () => `CON Welcome to AgriLink!\n1. Register\n2. Login`;
 const getFarmerMenu = (name) => `CON Welcome, ${name}!\n1. Add Produce\n2. Manage My Products\n3. View Offers`;
 
+exports.endUssdSession = (req, res) => {
+    const { phoneNumber } = req.body;
+    if (sessions[phoneNumber]) {
+        delete sessions[phoneNumber];
+        console.log(`Session ended for ${phoneNumber}`);
+        res.status(200).json({ success: true, message: 'Session ended.' });
+    } else {
+        res.status(200).json({ success: true, message: 'No active session to end.' });
+    }
+};
+
 exports.ussdHandler = async (req, res) => {
     const { phoneNumber, text } = req.body;
     let response = '';
-    let session = sessions[phoneNumber] || { level: 'main' };
+    let session = sessions[phoneNumber] || {};
 
     const textParts = text.split('*');
     const userInput = textParts[textParts.length - 1];
