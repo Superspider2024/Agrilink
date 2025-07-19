@@ -13,8 +13,8 @@ const bodyParser = require('body-parser');
 
 
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json())
+app.use(express.urlencoded({ extended: true }))
 
 
 const server = http.createServer(app); 
