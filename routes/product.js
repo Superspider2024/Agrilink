@@ -2,9 +2,9 @@
 
 const express = require('express')
 const router = express.Router()
-const {createproduct,products,product,updateproduct,deleteproduct}= require('../controllers/product.js')
+const {createproduct,farminput,products,product,updateproduct,deleteproduct}= require('../controllers/product.js')
 const protect = require('../middleware/protect.js')
-const {declineOffer,acceptOffer,createOffer,orders,order,updateOrder,deleteOrder,transport,offers,farminput}= require('../controllers/order.js')
+const {declineOffer,acceptOffer,createOffer,orders,order,updateOrder,deleteOrder,transport,offers}= require('../controllers/order.js')
 const {getMe,profile,updateProfile,users}= require('../controllers/profile.js')
 const { chatList,addChat,deleteChat,findLastMessage,findChats } = require('../controllers/chat.js')
 
