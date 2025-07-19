@@ -3,9 +3,12 @@
 const mongoose = require("mongoose")
 
 const orderSchema = new mongoose.Schema({
-    product:{type:mongoose.Schema.Types.ObjectId, ref: 'Product', required: true},
+    type:{type:String,required:true,enum:["order","farminput"]},
+    product:{type:mongoose.Schema.Types.ObjectId, ref: 'Product'},
     buyer:{type:mongoose.Schema.Types.ObjectId, ref: 'User', required: true},
-    farmer:{type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    farmer:{type: mongoose.Schema.Types.ObjectId,required:true, ref: 'User' },
+    inc:{type:"String"},
+    farminput:{type:"String"},
     price:{type:Number,required:true},
     quantity:{type:Number,required:true},
     status:{type:String,required:true,enum:["pending","accepted","rejected","delivered","paid"],default:"pending"},

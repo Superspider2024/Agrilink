@@ -102,4 +102,35 @@ const deleteproduct= async(req,res)=>{
     }
 }
 
-module.exports={createproduct,products,updateproduct,deleteproduct,product}
+const farminput= async(req,res)=>{
+    try{
+        const{inc,farminput,price,quantity,transport}=req.body;
+        if(!inc || !farminput || !price || !quantity){
+            throw new Error("All fields are required")
+        }
+        const farmer= req.user._id
+        const newOrder = await new Orders({
+            type:"farminput",
+            farmer:req.user._id,
+            inc,
+            farminput,
+            price,
+            quantity,
+            transport,
+            transporting:true,
+            status:"paid"
+
+        })
+        if(!newOrder){
+            throw new Error("Order not created")
+        }
+        await newOrder.save()
+        res.status(200).json(newOrder)
+    }catch(e){
+        res.status(500).json(e.message)
+    
+    }
+    }
+
+
+module.exports={createproduct,farminput,products,updateproduct,deleteproduct,product}
