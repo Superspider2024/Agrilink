@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { ussdHandler } = require('../controllers/ussd');
+const { ussdHandler,endUssdSession } = require('../controllers/ussd');
 
 // All USSD requests will come to this one endpoint
 router.post('/', ussdHandler);
