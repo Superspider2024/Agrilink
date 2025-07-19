@@ -47,18 +47,18 @@ exports.ussdHandler = async (req, res) => {
                 const [_, name, location, roleChoice, pin] = textParts;
                 const role = roleChoice === '1' ? 'farmer' : 'buyer';
                 
-                const existingUser = await User.findOne({ email: `${phoneNumber}@1agrilink.ussd` });
+                const existingUser = await User.findOne({ email: `${name}@agrilink.ussd` });
                 if (existingUser) {
                     response = `END A user with this phone number already exists. Please try logging in.`;
                 } else {
-                    await new User({ name, email: `${phoneNumber}@agrilink.ussd`, password: pin, location, role }).save();
+                    await new User({ name, email: `${name}@agrilink.ussd`, password: pin, location, role }).save();
                     response = `END Registration successful! Dial *384# again to log in.`;
                 }
             }
         }
         // --- LOGIN & MAIN MENU FLOW ---
         else if (textParts[0] === '2') {
-            const user = await User.findOne({ email: `${phoneNumber}@agrilink.ussd` });
+            const user = await User.findOne({ email: `${name}@agrilink.ussd` });
             if (!user) {
                 response = `END You are not registered. Please register first.`;
             } else if (textParts.length === 1) {
@@ -74,11 +74,11 @@ exports.ussdHandler = async (req, res) => {
             }
             // --- LOGGED-IN ACTIONS ---
             else if (textParts.length > 2) {
-                const user = await User.findOne({ email: `${phoneNumber}@agrilink.ussd` }); // Re-fetch user to be safe
+                const user = await User.findOne({ email: `${name}@agrilink.ussd` }); // Re-fetch user to be safe
                 const userChoice = textParts[2];
                 // --- FARMER ACTIONS ---
                 if (user.role === 'farmer') {
-                    if (userChoice === '1') { // Add Produce
+                    if (userChoice === '1') { // Add Producex
                         if (textParts.length === 3) response = `CON Enter produce name:`;
                         else if (textParts.length === 4) response = `CON Enter quantity (e.g., 50 kg):`;
                         else if (textParts.length === 5) response = `CON Enter price per unit (e.g., 120):`;
