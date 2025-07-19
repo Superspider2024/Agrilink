@@ -29,28 +29,30 @@ exports.endUssdSession = (req, res) => {
     }
 };
 
+
+
 exports.ussdHandler = async (req, res) => {
     const { phoneNumber, text } = req.body;
     let response = '';
-    
-    // Use a simple session based on phone number, default level is 'main'
-    let session = sessions[phoneNumber] || {level:"main"};
+    let session = sessions[phoneNumber] || { level: 'main' };
 
     const textParts = text.split('*');
     const userInput = textParts[textParts.length - 1];
 
     try {
-        // --- FIX: Robust "Back" functionality ---
+        // --- Robust "Back" functionality ---
         if (userInput === '0') {
             if (session.level.startsWith('farmer_')) {
                 session.level = 'farmer_menu';
                 response = getFarmerMenu(session.user.name);
+            } else if (session.level.startsWith('buyer_')) {
+                session.level = 'buyer_menu';
+                response = getBuyerMenu(session.user.name);
             } else {
                 session.level = 'main';
                 response = getMainMenu();
             }
         } else {
-            // --- This is a State Machine. It checks the session level to decide what to do. ---
             switch (session.level) {
                 case 'main':
                     if (userInput === '1') {
@@ -104,7 +106,9 @@ exports.ussdHandler = async (req, res) => {
                             session.level = 'farmer_menu';
                             response = getFarmerMenu(session.user.name);
                         } else {
-                            response = `END Buyer USSD menu is coming soon!`;
+                            // --- FIX: Set the session level and show the buyer menu ---
+                            session.level = 'buyer_menu';
+                            response = getBuyerMenu(session.user.name);
                         }
                     }
                     break;
@@ -180,6 +184,27 @@ exports.ussdHandler = async (req, res) => {
                     session.level = 'farmer_menu';
                     response = `CON Price updated successfully.\n\n${getFarmerMenu(session.user.name)}`;
                     break;
+                
+                // --- BUYER MENU STATES ---
+                case 'buyer_menu':
+                    if (userInput === '1') { // Browse Marketplace
+                        const allProducts = await Product.find().populate('farmer', 'name');
+                        if (allProducts.length === 0) {
+                            response = `CON The marketplace is currently empty.\n\n${getBuyerMenu(session.user.name)}`;
+                        } else {
+                            let productList = allProducts.map((p, i) => `${i + 1}. ${p.name} from ${p.farmer.name}`).join('\n');
+                            response = `END Available Products:\n${productList}`;
+                        }
+                    } else if (userInput === '2') { // View My Orders
+                        const myOrders = await Order.find({ buyer: session.user._id, status: 'pending' }).populate('product', 'name');
+                        if (myOrders.length === 0) {
+                            response = `CON You have no pending orders.\n\n${getBuyerMenu(session.user.name)}`;
+                        } else {
+                            let orderList = myOrders.map((o, i) => `${i + 1}. Offer for ${o.product.name}`).join('\n');
+                            response = `END Your Pending Orders:\n${orderList}`;
+                        }
+                    }
+                    break;
             }
         }
     } catch (err) {
@@ -191,3 +216,5 @@ exports.ussdHandler = async (req, res) => {
     res.set('Content-Type', 'text/plain');
     res.send(response);
 };
+
+
