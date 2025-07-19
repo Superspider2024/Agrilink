@@ -34,7 +34,7 @@ exports.ussdHandler = async (req, res) => {
     let response = '';
     
     // Use a simple session based on phone number, default level is 'main'
-    let session = sessions[phoneNumber] || { level: 'main' };
+    let session = sessions[phoneNumber] || {};
 
     const textParts = text.split('*');
     const userInput = textParts[textParts.length - 1];
