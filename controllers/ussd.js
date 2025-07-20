@@ -95,7 +95,7 @@ exports.ussdHandler = async (req, res) => {
                             response = `END Your Products:\n${productList}`;
                         }
                     } else if (userChoice === '3') { // View Offers
-                        const myOffers = await Order.find({ farmer: user._id, status: 'pending' }).populate('product', 'name');
+                        const myOffers = await Order.find({ farmer: user._id, status: 'pending' })//.populate('product', 'name');
                         if (myOffers.length === 0) response = `END You have no pending offers.`;
                         else {
                             let offerList = myOffers.map((o, i) => `${i + 1}. Offer for ${o.product.name}`).join('\n');
