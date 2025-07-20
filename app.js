@@ -13,7 +13,7 @@ const bodyParser = require('body-parser');
 
 
 
-app.use(express.json())
+
 app.use(express.urlencoded({ extended: true }))
 
 
@@ -29,6 +29,7 @@ const io = new Server(server, {
 
 connect()
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }))
 app.use(cors())
 app.use('/ussd', ussd);
 app.use('/auth',auth)
