@@ -3,7 +3,7 @@
 const mongoose = require("mongoose")
 
 const orderSchema = new mongoose.Schema({
-    type:{type:String,required:true,enum:["order","farminput"]},
+    type:{type:String,enum:["order","farminput"]},
     product:{type:mongoose.Schema.Types.ObjectId, ref: 'Product'},
     buyer:{type:mongoose.Schema.Types.ObjectId, ref: 'User' },
     farmer:{type: mongoose.Schema.Types.ObjectId,required:true, ref: 'User' },
