@@ -2,6 +2,31 @@ const Products = require("../models/product.js");
 const User = require("../models/user.js");
 const Orders = require("../models/order.js");
 
+const getProducts = async (req, res) => {
+    try {
+        // Only show buyers goods that haven't been sold or cancelled yet
+        const products = await Products.find({ 
+            status: { $in: ["LISTED", "IN_DEPOT"] } 
+        }).populate("farmer", "name location");
+        res.status(200).json(products);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+};
+
+const createProduct = async (req, res) => {
+    try {
+        const { name, description, image, stock, pricePerUnit, unit, location } = req.body;
+        const newProduct = await Products.create({
+            name, description, image, stock, pricePerUnit, unit, location,
+            farmer: req.user._id // The logged-in farmer/mansart
+        });
+        res.status(201).json(newProduct);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+};
+
 // PORTER: Create/Sign up a farmer for the depot
 const porterAddFarmer = async (req, res) => {
     try {
@@ -61,4 +86,4 @@ const verifyAndLock = async (req, res) => {
     }
 };
 
-module.exports = { porterAddFarmer, getMyDepotFarmers, verifyAndLock };
+module.exports = { getProducts, createProduct, porterAddFarmer, getMyDepotFarmers, verifyAndLock };
