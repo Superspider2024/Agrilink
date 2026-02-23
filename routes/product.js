@@ -1,58 +1,28 @@
-//Everything else routes!
+// routes/product.js
+const express = require("express");
+const router = express.Router();
+const { getProducts, createProduct, verifyAtDepot } = require("../controllers/product");
+const protect = require("../middleware/protect");
+const authorize = require("../middleware/authorize");
 
-const express = require('express')
-const router = express.Router()
-const {createproduct,farminput,products,product,updateproduct,deleteproduct}= require('../controllers/product.js')
-const protect = require('../middleware/protect.js')
-const {declineOffer,acceptOffer,createOffer,orders,order,updateOrder,deleteOrder,transport,offers}= require('../controllers/order.js')
-const {getMe,profile,updateProfile,users}= require('../controllers/profile.js')
-const { chatList,addChat,deleteChat,findLastMessage,findChats } = require('../controllers/chat.js')
+router.get("/", getProducts);
 
+// Only farmers and mansarts can list goods
+router.post("/", protect, authorize(["farmer", "mansart"]), createProduct);
 
+// ONLY the Porter can verify goods at the depot
+router.patch("/verify/:id", protect, authorize("porter"), verifyAtDepot);
 
+// Porter/Admin Operations
+router.post("/depot/farmer", protect, authorize(["porter", "admin"]), porterAddFarmer);
+router.get("/depot/farmers", protect, authorize(["porter", "admin"]), getMyDepotFarmers);
+router.patch("/depot/verify", protect, authorize(["porter", "admin"]), verifyAndLock);
 
-//product stuff
-router.post('/createproduct',protect,createproduct)
-router.get('/products',protect,products)
-router.get('/product/:id',protect,product)
-router.put('/updateproduct/:id',protect,updateproduct)
-router.delete('/deleteproduct/:id',protect,deleteproduct)
+// Status updates for Transport (triggered by Porter when Boda arrives)
+router.patch("/depot/transport/:id", protect, authorize(["porter", "admin"]), async (req, res) => {
+    const { transportStatus } = req.body;
+    const order = await Orders.findByIdAndUpdate(req.params.id, { transportStatus }, { new: true });
+    res.status(200).json(order);
+});
 
-
-
-//order stuff
-
-router.post('/order',protect,createOffer)
-router.get('/orders',protect,orders)
-router.get('/order/:id',protect,order)
-router.put('/updateorder/:id',protect,updateOrder)
-router.delete('/deleteorder/:id',protect,deleteOrder)
-router.put('/acceptoffer/:id',protect,acceptOffer)
-router.put('/declineoffer/:id',protect,declineOffer)
-router.get('/offers',protect,offers)
-router.post("/transport",protect,transport)
-
-//profile stuff
-
-router.get('/getMe',protect,getMe)
-router.get('/profile/:id',protect,profile)
-router.put('/updateprofile',protect,updateProfile)
-router.get('/users',users)
-
-
-//chat stuff
-
-router.post('/addchat',protect,addChat)
-router.post('/deletechat',protect,deleteChat)
-router.get('/chatList',protect,chatList)
-router.post('/findchats',protect,findChats)
-router.post('/findlastmessage',protect,findLastMessage)
-
-//farm inputs
-router.post("/farminput",protect,farminput)
-
-
-
-
-
-module.exports=router;
+module.exports = router;

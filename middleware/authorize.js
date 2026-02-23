@@ -1,31 +1,16 @@
-//the authorization middleware
-
-const User= require("../models/user.js")
-
-
-
-//authorizes onl farmers
-const authorizeFarmer=async(req,res,next)=>{
-    try{
-        if(req.user.role !== "farmer"){
-            throw new Error("Wrong role!")
-        }
-    next()
-    }catch(e){
-        res.status(401).json("ERROR: "+ e.message)
+// middleware/authorize.js
+const authorize = (roles = []) => {
+    if (typeof roles === 'string') {
+        roles = [roles];
     }
-}
 
-//authorizes only buyers
-const authorizeBuyer=async(req,res,next)=>{
-    try{
-        if(req.user.role !== "buyer"){
-            throw new Error("Wrong role!")
+    return (req, res, next) => {
+        // req.user is populated by the protect middleware
+        if (!req.user || (roles.length && !roles.includes(req.user.role))) {
+            return res.status(403).json({ error: "Access Denied: Unauthorized Role" });
         }
-    next()
-    }catch(e){
-        res.status(401).json("ERROR: "+ e.message)
-    }
-}
+        next();
+    };
+};
 
-module.exports={authorizeFarmer,authorizeBuyer}
+module.exports = authorize;

@@ -1,136 +1,62 @@
-const Products = require("../models/product.js")
-const Orders = require("../models/order.js")
+const Products = require("../models/product.js");
+const User = require("../models/user.js");
+const Orders = require("../models/order.js");
 
-
-const createproduct= async(req,res)=>{
-    try{
-        const {name,description,price,quantity,location}= req.body;  
-
-        if(!name || !description || !price || !quantity || !location){
-            throw new Error("All fields are required")
-        }
-
-        if(req.user.role!="farmer"){
-            throw new Error("Wrong role!")
-        }
-
-        const farmer= req.user._id
-        const newProduct =await  new Products({
+// PORTER: Create/Sign up a farmer for the depot
+const porterAddFarmer = async (req, res) => {
+    try {
+        const { name, produceType, location, phoneNumber } = req.body;
+        // Password defaults to phoneNumber for the pilot (simple login)
+        const farmer = await User.create({
             name,
-            description,
-            price,
-            quantity,
+            email: `${phoneNumber}@mavuno.com`, // Virtual email for ID
+            password: phoneNumber, 
             location,
-            farmer
-        })
-        if(!newProduct){
-            throw new Error("Product not created")
+            role: "farmer",
+            depotLocation: req.user.depotLocation // Assigned to the Porter's depot
+        });
+        res.status(201).json(farmer);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+};
 
-        }
+// PORTER: Get all farmers in MY depot
+const getMyDepotFarmers = async (req, res) => {
+    try {
+        const farmers = await User.find({ 
+            role: "farmer", 
+            depotLocation: req.user.depotLocation 
+        }).select("-password");
+        res.status(200).json(farmers);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+};
 
-        await newProduct.save()
-        res.status(200).json(newProduct)
-
+// PORTER: The Gatekeeper - Verify and set the Depot State
+const verifyAndLock = async (req, res) => {
+    try {
+        const { orderId, actualWeight, action } = req.body; // action: 'ACCEPT' or 'DECLINE'
         
-    }catch(e){
-        res.status(500).json(e.message)
-    
-    }
-}
+        const order = await Orders.findById(orderId).populate('product');
+        if (!order) throw new Error("Order not found");
 
-const products= async(req,res)=>{
-    try{
-        const products = await Products.find()
-        res.status(200).json(products)
-    }catch(e){
-        res.status(500).json(e.message)
-    
-    }
-}
-
-const product =async(req,res)=>{
-    try{
-        const id=req.params.id;
-        const product = await Products.findById(id)
-        res.status(200).json(product)
-    
-
-    }catch(e){
-        res.status(500).json(e.message)
-    
-    }
-}
-
-
-const updateproduct= async(req,res)=>{
-    try{
-        const id=req.params.id;
-        const {name,description,price,quantity,location,farmer}= req.body;  
-        const product = await Products.findByIdAndUpdate(id,{
-            name,
-            description,
-            price,
-            quantity,
-            location,
-            farmer
-        })
-        if(!product){
-            throw new Error("Product not updated")
-
+        if (action === 'DECLINE') {
+            order.status = "cancelled";
+            await order.save();
+            return res.status(200).json({ message: "Order Declined and Returned to Farmer" });
         }
 
-        product.save()
-        res.status(200).json(product)
-    }catch(e){
-        res.status(500).json(e.message)
-    
+        // If Accept: Update weight and move to payment state
+        order.status = "awaiting_payment";
+        await order.save();
+        
+        // Update the actual weight in the product model
+        await Products.findByIdAndUpdate(order.product._id, { verifiedWeight: actualWeight });
+
+        res.status(200).json({ message: "Verified. Buyer notified to pay." });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
-}
-
-const deleteproduct= async(req,res)=>{
-    try{
-        const id=req.params.id; 
-        const newProduct = await Products.findByIdAndDelete(id)
-        if(!newProduct){
-            throw new Error("Product not deleted")
-
-        }
-        res.status(200).json(product)
-    }catch(e){
-        res.status(500).json(e.message)
-    
-    }
-}
-
-const farminput= async(req,res)=>{
-    try{
-        const{inc,farminput,price,quantity,transport}=req.body;
-        if(!inc || !farminput || !price || !quantity){
-            throw new Error("All fields are required")
-        }
-        const farmer= req.user._id
-        const newOrder = await new Orders({
-            type:"farminput",
-            farmer:req.user._id,
-            inc,
-            farminput,
-            price,
-            quantity,
-            transport,
-            transporting:true,
-            status:"paid"
-
-        })
-        if(!newOrder){
-            throw new Error("Order not created")
-        }
-        await newOrder.save()
-        res.status(200).json(newOrder)
-    }catch(e){
-        res.status(500).json(e.message)
-    
-    }
-    }
-
-
-module.exports={createproduct,farminput,products,updateproduct,deleteproduct,product}
+};
