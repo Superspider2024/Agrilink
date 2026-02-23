@@ -1,8 +1,8 @@
-// utils/jwt.js
 const jwt = require("jsonwebtoken");
 
-const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.SECRET || "mavuno_secret_2026", {
+// Added 'role' parameter to the function and payload
+const generateToken = (id, role) => {
+    return jwt.sign({ id, role }, process.env.JWT_SECRET, {
         expiresIn: "30d",
     });
 };

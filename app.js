@@ -15,15 +15,6 @@ app.use(express.urlencoded({ extended: true }))
 
 
 
-
-
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
-
 connect()
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }))
