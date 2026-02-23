@@ -2,9 +2,7 @@
 
 const jwt= require("jsonwebtoken")
 require("dotenv").config()
-const verify= require("../utils/verify.js")
-const express= require("express")
-const split= require("../utils/authsplit.js")
+
 const User= require("../models/user.js")
 
 //Checks if JWT is valid

@@ -8,15 +8,6 @@ const connect = require('./config/db.js')
 const http = require('http')
 const bodyParser = require('body-parser');
 const orderRoutes = require('./routes/order.js');
-const { getProducts, createProduct, porterAddFarmer, getMyDepotFarmers, verifyAndLock } = require("../controllers/product");
-const Orders = require("../models/order"); 
-const protect = require("../middleware/protect");
-const authorize = require("../middleware/authorize");
-
-// The Marketplace Routes (The missing front doors)
-router.get("/", getProducts); // Anyone can view products
-router.post("/", protect, authorize(["farmer", "mansart"]), createProduct); // Only farmers/mansarts can list
-
 
 
 app.use(express.urlencoded({ extended: true }))

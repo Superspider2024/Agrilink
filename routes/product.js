@@ -1,10 +1,14 @@
 const express = require("express");
 const router = express.Router();
 // IMPORT THE CORRECT FUNCTIONS
-const { porterAddFarmer, getMyDepotFarmers, verifyAndLock } = require("../controllers/product");
-const Orders = require("../models/order"); // IMPORT THE MODEL for the transport route
+const { getProducts, createProduct, porterAddFarmer, getMyDepotFarmers, verifyAndLock } = require("../controllers/product");
+const Orders = require("../models/order"); 
 const protect = require("../middleware/protect");
 const authorize = require("../middleware/authorize");
+
+// The Marketplace Routes (The missing front doors)
+router.get("/", getProducts); // Anyone can view products
+router.post("/", protect, authorize(["farmer", "mansart"]), createProduct); // Only farmers/mansarts can list
 
 // Porter/Admin Operations
 router.post("/depot/farmer", protect, authorize(["porter", "admin"]), porterAddFarmer);
